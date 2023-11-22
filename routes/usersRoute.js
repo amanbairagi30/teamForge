@@ -1,3 +1,4 @@
+const Team = require('../models/teamModel');
 const User = require('../models/usersModel');
 
 const router = require('express').Router();
@@ -7,7 +8,7 @@ const router = require('express').Router();
 router.get('/get-users', async (req, res) => {
     try {
         let { page, limit, search, domain, gender, availability } = req.query;
-        console.log("------",req.query)
+        console.log("------", req.query)
         const query = {};
 
         // Case-insensitive search by name
@@ -28,7 +29,7 @@ router.get('/get-users', async (req, res) => {
             query.availability = availability;
         }
 
-        console.log("---------QQQQQQ----------",query);
+        console.log("---------QQQQQQ----------", query);
 
         const users = await User.find(query).sort({ createdAt: -1 });
 
@@ -42,7 +43,7 @@ router.get('/get-users', async (req, res) => {
         const slicedData = users.slice(startIndex, endIndex);
 
         res.json({
-            items: query.first_name ? users: slicedData,
+            items: query.first_name ? users : slicedData,
             totalPages: Math.ceil(users.length),
         });
     } catch (error) {
@@ -106,6 +107,52 @@ router.get("/get-user-by-id/:id", async (req, res) => {
     }
 })
 
+router.post('/team', async (req, res) => {
+    const { userId, teamName, domain, availability } = req.body;
+
+    try {
+        // Check if a team with the specified teamName exists
+        let existingTeam = await Team.findOne({ teamName });
+
+        if (existingTeam) {
+            // Team exists, add the user as a member
+            existingTeam.members.push(userId);
+            await existingTeam.save();
+            res.json({ success: true, message: 'User added to existing team', data: existingTeam });
+        } else {
+            // Team doesn't exist, create a new team
+            const newTeam = new Team({
+                teamName,
+                domain,
+                availability,
+                members: [userId],
+            });
+
+            // Save the new team to the database
+            await newTeam.save();
+            res.json({ success: true, message: 'New team created', data: newTeam });
+        }
+    } catch (error) {
+        console.error('Error creating or updating team:', error);
+        res.status(500).json({ success: false, message: 'Internal Server Error' });
+    }
+
+});
+
+// GET /api/team/:id
+router.get('/team/:id', async (req, res) => {
+    try {
+        // Find the team by ID and populate the members field with user details
+        const team = await Team.findById(req.params.id).populate('members', 'first_name last_name email'); // Add more fields as needed
+        if (!team) {
+            return res.status(404).json({ success: false, message: 'Team not found' });
+        }
+        res.json({ success: true, data: team });
+    } catch (error) {
+        console.error('Error retrieving team:', error);
+        res.status(500).json({ success: false, message: 'Internal Server Error' });
+    }
+});
 // update user by id api endpoint
 router.put("/edit-user/:id", async (req, res) => {
     try {

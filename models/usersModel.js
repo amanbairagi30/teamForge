@@ -18,6 +18,10 @@ const userSchema = new mongoose.Schema({
         type: String,
         required: true,
     },
+    team:{
+        type:String,
+        default : "",
+    },
     gender: {
         type: String,
         required: true,
